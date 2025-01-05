@@ -34,4 +34,5 @@ yarl==1.9.4
 zope.interface==6.4.post2
 aiofiles~=24.1.0
 brotli==1.1.0
-ua-generator==1.0.6 
+ua-generator==1.0.6
+python-dateutil==2.9.0.post0
