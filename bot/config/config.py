@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     SLEEP_TIME: list[int] = [2700, 4200]
     START_DELAY: list[int] = [5, 100]
     
-    REF_KEY: str = 'galaxy-0001a845e80004f232c60000a43a7f'
+    REF_KEY: str = 'ref1178697351'
     IN_USE_SESSIONS_PATH: str = 'bot/config/used_sessions.txt'
     
     NIGHT_MODE: bool = False
