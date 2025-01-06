@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     AUTO_QUIZ: bool = True
     
     AUTO_UPGRADE: bool = True
+    SAVE_FEED: int = 1000
     
     AUTO_FEED: bool = True
     

@@ -33,7 +33,7 @@ from .headers import headers
 
 from random import randint
 
-from bot.utils.functions import gen_hash, get_icon, user_animals, new_animals_list, upgradable_animals_list, available_positions, require_feed
+from bot.utils.functions import gen_hash, get_icon, user_animals, new_animals_list, upgradable_animals_list, available_positions, require_feed, date_parse
 
 from ..utils.firstrun import append_line_to_file
 
@@ -626,7 +626,7 @@ class Tapper:
                             break
                         logger.success(f"{self.session_name} | <g>Account Registered!</g>")
                     
-                    logger.success(f"{self.session_name} | Coins: <g>{self.user_coins}</g> | Tokens: <g>{tokens}</g> | Tokens/Hour: <g>{tkperhr}</g>")
+                    logger.success(f"{self.session_name} | Feed: <g>{self.user_coins}</g> | Coins: <g>{tokens}</g> | Coins/Hour: <g>{tkperhr}</g>")
                     
                     await asyncio.sleep(randint(1, 3))
                         
@@ -646,7 +646,7 @@ class Tapper:
                             
                             reward_money = next((item['rewardMoney'] for item in user_data['data']['dbData']['dbDailyRewards'] if item['key'] == int(day_check[0])), 0)
                             self.user_coins = int(reward_money) + self.user_coins
-                            logger.success(f"{self.session_name} | Check-In Successful <y>{day_check[0]}</y>: <g>+{reward_money} Coins</g>")
+                            logger.success(f"{self.session_name} | Check-In Successful <y>{day_check[0]}</y>: <g>+{reward_money} Feed</g>")
 
                         await asyncio.sleep(randint(1, 3))
                         
@@ -655,11 +655,27 @@ class Tapper:
                         tasks = [
                             task
                             for task in quests
-                            if (task["checkType"] == "telegramChannel") or
-                               (task["checkType"] == "invite" and task["checkCount"] <= int(friends)) or
-                               (task["checkType"] == "fakeCheck") or
-                               (task["checkType"] == "checkCode" and task["key"].startswith("rebus_")) or
-                               (task["checkType"] == "checkCode" and task["key"].startswith("riddle_"))
+                            if (
+                                task["checkType"] == "telegramChannel"
+                                or (task["checkType"] == "invite" and task["checkCount"] <= int(friends))
+                                or task["checkType"] == "fakeCheck"
+                                or (task["checkType"] == "checkCode" and task["key"].startswith("rebus_"))
+                                or (task["checkType"] == "checkCode" and task["key"].startswith("riddle_"))
+                                or (
+                                    task.get("dateStart") is None
+                                    or (
+                                        (parsed_start := date_parse(task["dateStart"])) is not None
+                                        and datetime.datetime.now() > parsed_start
+                                    )
+                                )
+                                or (
+                                    task.get("dateEnd") is None
+                                    or (
+                                        (parsed_end := date_parse(task["dateEnd"])) is not None
+                                        and datetime.datetime.now() > parsed_end
+                                    )
+                                )
+                            )
                         ]
 
                         finished = [task for task in tasks if any(q["key"] == task["key"] for q in quest_check)]
@@ -686,7 +702,8 @@ class Tapper:
                                 data_done = await self.claim_quest(http_client, quest=task["key"])
                                 if data_done:
                                     self.user_coins = int(task['reward']) + self.user_coins
-                                    logger.success(f"{self.session_name} | Task: <y>{task.get('title', 'Drop')}</y> | Reward: <y>+{task['reward']} Coins</y>")
+                                    task_title = task.get('title') or ("Chest" if task.get('key').startswith("chest_") else task_title)
+                                    logger.success(f"{self.session_name} | Task: <y>{task_title}</y> | Reward: <y>+{task['reward']} Feed</y>")
                                     quest_check.append({"key": task["key"]})
                                     
                                 await asyncio.sleep(random.randint(3, 6))
@@ -721,7 +738,7 @@ class Tapper:
                             done_quiz = await self.claim_quiz(http_client, quiz=quiz_key)
                             if done_quiz:
                                 self.user_coins = int(quiz['reward']) + self.user_coins
-                                logger.success(f"{self.session_name} | Quiz: <y>{quiz_key}</y> | Reward: <y>+{quiz['reward']} Coins</y>")
+                                logger.success(f"{self.session_name} | Quiz: <y>{quiz_key}</y> | Reward: <y>+{quiz['reward']} Feed</y>")
                                 quiz_check.append({"key": quiz_key})
                             
                             await asyncio.sleep(random.randint(5, 8))
@@ -740,9 +757,10 @@ class Tapper:
                         logger.info(f"{self.session_name} | Upgrading Animals...")
                          
                         while self.upgrade_possible:
+                            save_feed = self.user_coins - settings.SAVE_FEED
                             user_animal_list = user_animals(animal_db=db_animals, animal_user=self.user_animals)
-                            new_animals = new_animals_list(animal_db=db_animals, animal_user=user_animal_list, balance=self.user_coins)
-                            upgradable_animals = upgradable_animals_list(animal_user=user_animal_list, balance=self.user_coins)
+                            new_animals = new_animals_list(animal_db=db_animals, animal_user=user_animal_list, balance=save_feed)
+                            upgradable_animals = upgradable_animals_list(animal_user=user_animal_list, balance=save_feed)
                             
                             if not new_animals and not upgradable_animals:
                                 logger.info(f"{self.session_name} | No more animals to upgrade, Stopping...")
@@ -759,6 +777,9 @@ class Tapper:
                                 logger.success(f"{self.session_name} | Animal Purchased {emoji}: <y>{animal['title']}</y>")
                                 self.user_animals = purchase_animal['data'].get('animals')
                                 self.user_coins = purchase_animal['data']['hero'].get('coins')
+                                tokens = purchase_animal['data']['hero'].get('tokens')
+                                tkperhr = purchase_animal['data']['hero'].get('tph')
+                                
                                 
                             if not purchase_animal:
                                 logger.error(f"{self.session_name} | Something Went Wrong, animal can not be purchased!")
@@ -766,8 +787,7 @@ class Tapper:
                             await asyncio.sleep(random.randint(5, 8))
 
                         logger.info(f"{self.session_name} | Upgrade Completed!")
-                        logger.success(f"{self.session_name} | Updated Coins: <g>{self.user_coins}</g>")
-
+                        logger.success(f"{self.session_name} | Updated Feed: <g>{self.user_coins}</g> | Updated Coins: <g>{tokens}</g> | Updated Coins/Hour: <g>{tkperhr}</g>")
                          
                     logger.info(f"{self.session_name} | Sleep <y>{round(sleep_time / 60, 1)}</y> min")
                     await asyncio.sleep(delay=sleep_time)

@@ -31,7 +31,10 @@ icons = [
     {"key": "tiger", "icon": "🐅"},
     {"key": "shark", "icon": "🦈"},
     {"key": "lion", "icon": "🦁"},
-    {"key": "special_icecream", "icon": "🍦"}
+    {"key": "special_icecream", "icon": "🍦"},
+    {"key": "special_snake_cobra", "icon": "🐍"},
+    {"key": "alpaca", "icon": "🦙"},
+    {"key": "mountain_goat", "icon": "🐐"},
 ]
 
 async def gen_hash(api_time, json_data):
@@ -135,3 +138,6 @@ def require_feed(user_data):
     can_purchase = balance >= feed_price
     
     return should_purchase and can_purchase
+
+def date_parse(date):
+    return parse_date(date) if isinstance(date, str) and date.strip() else None

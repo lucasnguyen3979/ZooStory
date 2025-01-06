@@ -12,7 +12,7 @@
     <img src="https://i.ibb.co/tM1LMdv/Untitled.png" alt="ZooStory Logo" width="100" height="100">
   </a>
 
-<h3 align="center">Auto <a href="https://t.me/zoo_story_bot/game?startapp=ref1178697351">@Zoo_Story_Bot 1.0</a></h3>
+<h3 align="center">Auto <a href="https://t.me/zoo_story_bot/game?startapp=ref1178697351">@Zoo_Story_Bot</a> 1.2</h3>
   <p align="center">
     Auto <a href="https://t.me/zoo_story_bot/game?startapp=ref1178697351">@zoo_story_bot</a> Farming Script
     <br />
@@ -71,6 +71,7 @@ An automated script/code made by @m3taphor on [Python 3.10](https://www.python.o
   - Solve Riddle & Rebus
   - Claim time-limited chests
 - Auto Upgrade Animals
+  - Save Feed
 - Night-Mode Sleep
 - Track Bot Updates
 
@@ -115,6 +116,7 @@ An automated script/code made by @m3taphor on [Python 3.10](https://www.python.o
 | **AUTO_QUIZ**            |                          [Auto Task]: Participate in Quiz (default - `True`)                           |
 | **AUTO_FEED**            |                         Auto buy instant feed boost animals (default - `True`)                         |
 | **AUTO_UPGRADE**         |                            Auto purchase/upgrade animals (default - `True`)                            |
+| **SAVE_FEED**            |                  [Auto Upgrade:] Save feed while upgrading animals (default - `1000`)                  |
 | **NIGHT_MODE**           |                          Script will sleep on Night hours (default - `False`)                          |
 | **NIGHT_TIME**           |             [Night Mode]: Hours of sleep on UTC Timezone [start, end] (default - `[0, 7]`)             |
 | **NIGHT_CHECKING**       |      [Night Mode]: Delay (in seconds) to check if night hours are over (default - `[3600, 7200]`)      |
