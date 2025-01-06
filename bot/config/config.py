@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     AUTO_SIGN_IN: bool = True
     
     AUTO_TASK: bool = True
+    CHEST_SLEEP: bool = True
     AUTO_JOIN_CHANNELS: bool = True
     AUTO_QUIZ: bool = True
     

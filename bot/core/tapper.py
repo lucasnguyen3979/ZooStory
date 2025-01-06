@@ -33,7 +33,7 @@ from .headers import headers
 
 from random import randint
 
-from bot.utils.functions import gen_hash, get_icon, user_animals, new_animals_list, upgradable_animals_list, available_positions, require_feed, date_parse
+from bot.utils.functions import gen_hash, get_icon, user_animals, new_animals_list, upgradable_animals_list, available_positions, require_feed, date_parse, date_unix
 
 from ..utils.firstrun import append_line_to_file
 
@@ -661,20 +661,12 @@ class Tapper:
                                 or task["checkType"] == "fakeCheck"
                                 or (task["checkType"] == "checkCode" and task["key"].startswith("rebus_"))
                                 or (task["checkType"] == "checkCode" and task["key"].startswith("riddle_"))
-                                or (
-                                    task.get("dateStart") is None
-                                    or (
-                                        (parsed_start := date_parse(task["dateStart"])) is not None
-                                        and datetime.datetime.now() > parsed_start
-                                    )
-                                )
-                                or (
-                                    task.get("dateEnd") is None
-                                    or (
-                                        (parsed_end := date_parse(task["dateEnd"])) is not None
-                                        and datetime.datetime.now() > parsed_end
-                                    )
-                                )
+                                or (task["key"].startswith("chest_") and (
+                                    datetime.datetime.now() > date_parse(task["dateStart"]) or
+                                    datetime.datetime.now() < date_parse(task["dateEnd"])
+                                ) and (
+                                    datetime.datetime.now() > date_parse(task["actionTo"])
+                                ))
                             )
                         ]
 
@@ -692,7 +684,17 @@ class Tapper:
                                         if join_data == False:
                                             continue
                                         await asyncio.sleep(random.randint(5, 10))
-                                
+                                        
+                                if task["key"].startswith("chest_"):
+                                    action_date = date_parse(date=task["actionTo"])
+                                    if action_date:
+                                        chest_time = date_unix(date=action_date) - date_unix(date=datetime.datetime.now())
+                                        if chest_time <= sleep_time and settings.CHEST_SLEEP:
+                                            logger.info(f"{self.session_name} | Sleeping <y>{round(chest_time / 60, 1)}</y> min, Until Chest appears...")
+                                            await asyncio.sleep(delay=chest_time + 120)
+                                        if chest_time > sleep_time:
+                                            continue
+                                            
                                 if task.get("checkType") != "fakeCheck":
                                     await self.check_quest(http_client, quest=task["key"])
                                     

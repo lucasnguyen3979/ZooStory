@@ -1,6 +1,6 @@
 from hashlib import md5
 from urllib.parse import quote
-from datetime import datetime
+from datetime import datetime, timezone
 from dateutil.parser import parse as parse_date
 
 icons = [
@@ -141,3 +141,19 @@ def require_feed(user_data):
 
 def date_parse(date):
     return parse_date(date) if isinstance(date, str) and date.strip() else None
+
+def date_unix(date):
+    try:
+        if isinstance(date, str):
+            datetime_object = datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
+        elif isinstance(date, datetime):
+            datetime_object = date
+        else:
+            raise ValueError("Invalid date format. Must be a string or datetime object.")
+
+        datetime_object = datetime_object.replace(tzinfo=timezone.utc)
+        unix_timestamp = int(datetime_object.timestamp())
+        return unix_timestamp
+    except ValueError as e:
+        print(f"Error parsing date: {e}")
+        return None
