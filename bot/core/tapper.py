@@ -608,6 +608,9 @@ class Tapper:
                         await asyncio.sleep(delay=sleep_time)
                         break
                     
+                    quest_check = after_data['data'].get('quests')
+                    quiz_check = after_data['data'].get('quizzes')
+                    
                     if len(onboard) == 0 and len(animals) == 0:
                         logger.info(f"{self.session_name} | Non-Invited account. Using Refer...")
                         await asyncio.sleep(randint(2, 5))
@@ -633,8 +636,6 @@ class Tapper:
                     # Check-In
                     if settings.AUTO_SIGN_IN:
                         day_check = [k for k, v in after_data['data']['dailyRewards'].items() if v == 'canTake']
-                        quest_check = after_data['data'].get('quests')
-                        quiz_check = after_data['data'].get('quizzes')
                         
                         if day_check:
                             checkin_data = await self.check_in(http_client, day=int(day_check[0]))
@@ -659,20 +660,19 @@ class Tapper:
                                 task["checkType"] == "telegramChannel"
                                 or (task["checkType"] == "invite" and task["checkCount"] <= int(friends))
                                 or task["checkType"] == "fakeCheck"
-                                or (task["checkType"] == "checkCode" and task["key"].startswith("rebus_"))
-                                or (task["checkType"] == "checkCode" and task["key"].startswith("riddle_"))
-                                or (task["key"].startswith("chest_") and (
-                                    datetime.datetime.now() > date_parse(task["dateStart"]) or
-                                    datetime.datetime.now() < date_parse(task["dateEnd"])
-                                ) and (
-                                    datetime.datetime.now() > date_parse(task["actionTo"])
-                                ))
+                                or (task["checkType"] == "checkCode" and task["key"].startswith(("rebus_", "riddle_")))
+                                or (
+                                    task["key"].startswith("chest_")
+                                    and datetime.datetime.now() > date_parse(task["dateStart"])
+                                    and datetime.datetime.now() < date_parse(task["dateEnd"])
+                                    and datetime.datetime.now() > date_parse(task["actionTo"])
+                                )
                             )
                         ]
 
                         finished = [task for task in tasks if any(q["key"] == task["key"] for q in quest_check)]
                         pending = [task for task in tasks if task not in finished]
-                        
+                        print('pending:', pending)
                         if len(pending) > 0:
                             logger.info(f"{self.session_name} | Task: <le>{len(tasks)}</le> | Pending Task: <y>{len(pending)}</y> | Finished Task: <g>{len(finished)}</g>")
                             logger.info(f"{self.session_name} | Processing Tasks...")
@@ -689,10 +689,10 @@ class Tapper:
                                     action_date = date_parse(date=task["actionTo"])
                                     if action_date:
                                         chest_time = date_unix(date=action_date) - date_unix(date=datetime.datetime.now())
-                                        if chest_time <= sleep_time and settings.CHEST_SLEEP:
+                                        if chest_time <= sleep_time and settings.CHEST_SLEEP and chest_time > 0:
                                             logger.info(f"{self.session_name} | Sleeping <y>{round(chest_time / 60, 1)}</y> min, Until Chest appears...")
                                             await asyncio.sleep(delay=chest_time + 120)
-                                        if chest_time > sleep_time:
+                                        else:
                                             continue
                                             
                                 if task.get("checkType") != "fakeCheck":
