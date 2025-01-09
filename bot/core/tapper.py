@@ -672,7 +672,6 @@ class Tapper:
 
                         finished = [task for task in tasks if any(q["key"] == task["key"] for q in quest_check)]
                         pending = [task for task in tasks if task not in finished]
-                        print('pending:', pending)
                         if len(pending) > 0:
                             logger.info(f"{self.session_name} | Task: <le>{len(tasks)}</le> | Pending Task: <y>{len(pending)}</y> | Finished Task: <g>{len(finished)}</g>")
                             logger.info(f"{self.session_name} | Processing Tasks...")
