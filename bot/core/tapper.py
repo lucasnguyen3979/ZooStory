@@ -33,7 +33,7 @@ from .headers import headers
 
 from random import randint
 
-from bot.utils.functions import gen_hash, get_icon, user_animals, new_animals_list, upgradable_animals_list, available_positions, require_feed, date_parse, date_unix
+from bot.utils.functions import gen_hash, get_icon, user_animals, new_animals_list, upgradable_animals_list, available_positions, require_feed, date_utc, date_unix
 
 from ..utils.firstrun import append_line_to_file
 
@@ -708,11 +708,11 @@ class Tapper:
                                 or (
                                     task["checkType"] == "checkCode"
                                     and task["key"].startswith(("rebus_", "riddle_"))
-                                    and datetime.datetime.now(datetime.timezone.utc) < date_parse(task["dateStart"]))
+                                    and datetime.datetime.now(datetime.timezone.utc) > date_utc(task["dateStart"]))
                                 or (
                                     task["key"].startswith("chest_")
-                                    and datetime.datetime.now(datetime.timezone.utc) < date_parse(task["dateEnd"])
-                                    and datetime.datetime.now(datetime.timezone.utc) > date_parse(task["actionTo"])
+                                    and datetime.datetime.now(datetime.timezone.utc) < date_utc(task["dateEnd"])
+                                    and datetime.datetime.now(datetime.timezone.utc) > date_utc(task["actionTo"])
                                 )
                             )
                         ]
@@ -736,8 +736,10 @@ class Tapper:
                                         await asyncio.sleep(random.randint(5, 10))
 
                                 if task["key"].startswith("chest_"):
-                                    action_date = date_parse(
+                                    action_date = date_utc(
                                         date=task["actionTo"])
+                                    logger.info(
+                                        f"Checking chest <y>{task['key']}</y> at <le>{task['actionTo']}</le>...")
                                     if action_date:
                                         chest_time = date_unix(
                                             date=action_date) - date_unix(date=datetime.datetime.now(datetime.timezone.utc))
@@ -745,16 +747,18 @@ class Tapper:
                                             logger.info(
                                                 f"{self.session_name} | Sleeping <y>{round(chest_time / 60, 1)}</y> min, Until Chest appears...")
                                             await asyncio.sleep(delay=chest_time + 120)
-                                        else:
-                                            continue
 
                                 taskStatus = None
                                 if task.get("checkType") != "fakeCheck":
+                                    logger.info(
+                                        f"Checking task <y>{task['key']}</y>...")
                                     taskStatus = await self.check_quest(http_client, quest=task["key"])
 
                                 if (task.get("checkType") == "checkCode"
                                     and task["key"].startswith(("rebus_", "riddle_"))
-                                        and datetime.datetime.now(datetime.timezone.utc) < date_parse(task["dateStart"])):
+                                        and datetime.datetime.now(datetime.timezone.utc) > date_utc(task["dateStart"])):
+                                    logger.info(
+                                        f"Checking task <y>{task['key']}</y>...")
                                     taskStatus = await self.check_quest(http_client, quest=task["key"], quest_solution=task["checkData"])
 
                                 if taskStatus != None:
@@ -773,6 +777,7 @@ class Tapper:
 
                     # Auto Quiz
                     if settings.AUTO_QUIZ:
+                        logger.info(f"Checking quizz...")
                         finished_quiz = [
                             quiz for quiz in quizzes
                             if any(q["key"] == quiz["key"] for q in quiz_check)
@@ -815,6 +820,7 @@ class Tapper:
                     # Auto Feed
                     if settings.AUTO_FEED:
                         feed_requires = require_feed(user_data=user_data)
+                        logger.info(f"Checking feed <y>{feed_requires}</y>...")
                         if feed_requires:
                             logger.info(
                                 f"{self.session_name} | Feeding Animals...")

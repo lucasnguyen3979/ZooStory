@@ -89,9 +89,9 @@ def new_animals_list(animal_db, animal_user, balance):
                     animal['key'] not in [ua['key'] for ua in animal_user],
                     animal['levels'][0]['price'] <= balance,
                     animal.get('dateStart') is None or datetime.now(
-                        datetime.timezone.utc) > parse_date(animal['dateStart']),
+                        timezone.utc) > parse_date(animal['dateStart']),
                     animal.get('dateEnd') is None or datetime.now(
-                        datetime.timezone.utc) < parse_date(animal['dateEnd'])
+                        timezone.utc) < parse_date(animal['dateEnd'])
                 ]
             )
         ],
@@ -131,8 +131,8 @@ def require_feed(user_data):
 
     has_expired = False
     if next_feed_time:
-        next_feed_time_utc = datetime.fromisoformat(next_feed_time)
-        has_expired = datetime.now(datetime.timezone.utc) > next_feed_time_utc
+        next_feed_time_utc = date_utc(next_feed_time)
+        has_expired = datetime.now(timezone.utc) > next_feed_time_utc
 
     balance = int(hero_data.get("coins", 0))
     tph = hero_data.get("tph", 0)
@@ -168,6 +168,22 @@ def date_unix(date):
         datetime_object = datetime_object.replace(tzinfo=timezone.utc)
         unix_timestamp = int(datetime_object.timestamp())
         return unix_timestamp
+    except ValueError as e:
+        print(f"Error parsing date: {e}")
+        return None
+
+
+def date_utc(date):
+    try:
+        if isinstance(date, str):
+            datetime_object = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        elif isinstance(date, datetime):
+            datetime_object = date
+        else:
+            raise ValueError(
+                "Invalid date format. Must be a string or datetime object.")
+
+        return datetime_object.replace(tzinfo=timezone.utc)
     except ValueError as e:
         print(f"Error parsing date: {e}")
         return None
