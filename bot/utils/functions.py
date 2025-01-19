@@ -2,6 +2,7 @@ from hashlib import md5
 from urllib.parse import quote
 from datetime import datetime, timezone
 from dateutil.parser import parse as parse_date
+from types import SimpleNamespace
 
 icons = [
     {"key": "turtle", "icon": "🐢"},
@@ -148,11 +149,24 @@ def require_feed(user_data):
     should_purchase = is_need_feed or has_expired
     can_purchase = balance >= feed_price
 
-    return should_purchase and can_purchase
+    return SimpleNamespace(can_purchase=should_purchase and can_purchase, next_feed_time=next_feed_time_utc)
 
 
 def date_parse(date):
     return parse_date(date) if isinstance(date, str) and date.strip() else None
+
+
+def get_time_diff_from_now(date):
+    return date_unix(date_utc(date)) - date_unix(datetime.now(timezone.utc))
+
+
+def compare_with_now(date):
+    if date_utc(date) < datetime.datetime.now(datetime.timezone.utc):
+        return "past"
+    elif date_utc(date) == datetime.datetime.now(datetime.timezone.utc):
+        return 0
+    else:
+        return "future"
 
 
 def date_unix(date):

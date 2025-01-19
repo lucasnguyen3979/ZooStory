@@ -33,7 +33,7 @@ from .headers import headers
 
 from random import randint
 
-from bot.utils.functions import gen_hash, get_icon, user_animals, new_animals_list, upgradable_animals_list, available_positions, require_feed, date_utc, date_unix
+from bot.utils.functions import gen_hash, get_icon, user_animals, new_animals_list, upgradable_animals_list, compare_with_now, available_positions, require_feed, get_time_diff_from_now, date_utc, date_unix
 
 from ..utils.firstrun import append_line_to_file
 
@@ -558,7 +558,9 @@ class Tapper:
             if proxy:
                 await self.check_proxy(http_client=http_client, proxy=proxy)
 
-            delay = randint(settings.START_DELAY[0], settings.START_DELAY[1])
+            delay = randint(1, 2)
+            local_timezone = datetime.datetime.now().astimezone().tzinfo
+            print(local_timezone)
             logger.info(f"{self.session_name} | Starting in {delay} seconds")
             await asyncio.sleep(delay=delay)
 
@@ -582,6 +584,7 @@ class Tapper:
 
                     sleep_time = randint(
                         settings.SLEEP_TIME[0], settings.SLEEP_TIME[1])
+                    sleep_times = [sleep_time]
 
                     try:
                         ref_id, login_json = await self.get_tg_web_data(proxy=proxy)
@@ -679,6 +682,8 @@ class Tapper:
 
                         if day_check:
                             checkin_data = await self.check_in(http_client, day=int(day_check[0]))
+                            logger.info(
+                                f"Daily check-in for day {int(day_check[0])}...")
                             if not checkin_data:
                                 logger.error(
                                     f"{self.session_name} | Unknown error while check-in!")
@@ -692,8 +697,10 @@ class Tapper:
                             self.user_coins = int(
                                 reward_money) + self.user_coins
                             logger.success(
-                                f"{self.session_name} | Check-In Successful <y>{day_check[0]}</y>: <g>+{reward_money} Feed</g>")
-
+                                f"{self.session_name} | Check-in successful <y>{day_check[0]}</y>: <g>+{reward_money} Feed</g>")
+                        else:
+                            logger.info(
+                                f"<g>Already checked in daily before.</g>")
                         await asyncio.sleep(randint(1, 3))
 
                     # Quests
@@ -707,12 +714,11 @@ class Tapper:
                                 or task["checkType"] == "fakeCheck"
                                 or (
                                     task["checkType"] == "checkCode"
-                                    and task["key"].startswith(("rebus_", "riddle_"))
-                                    and datetime.datetime.now(datetime.timezone.utc) > date_utc(task["dateStart"]))
+                                    and task["key"].startswith(("rebus_", "riddle_")))
                                 or (
                                     task["key"].startswith("chest_")
-                                    and datetime.datetime.now(datetime.timezone.utc) < date_utc(task["dateEnd"])
-                                    and datetime.datetime.now(datetime.timezone.utc) > date_utc(task["actionTo"])
+                                    and compare_with_now(task["dateEnd"]) == "future"
+                                    and compare_with_now(task["actionTo"]) == "past"
                                 )
                             )
                         ]
@@ -736,30 +742,36 @@ class Tapper:
                                         await asyncio.sleep(random.randint(5, 10))
 
                                 if task["key"].startswith("chest_"):
-                                    action_date = date_utc(
-                                        date=task["actionTo"])
                                     logger.info(
-                                        f"Checking chest <y>{task['key']}</y> at <le>{task['actionTo']}</le>...")
-                                    if action_date:
-                                        chest_time = date_unix(
-                                            date=action_date) - date_unix(date=datetime.datetime.now(datetime.timezone.utc))
-                                        if chest_time <= sleep_time and settings.CHEST_SLEEP and chest_time > 0:
-                                            logger.info(
-                                                f"{self.session_name} | Sleeping <y>{round(chest_time / 60, 1)}</y> min, Until Chest appears...")
-                                            await asyncio.sleep(delay=chest_time + 120)
+                                        f"Upcoming <y>{task['key']}</y> at <le>{date_utc(task['actionTo']).astimezone(local_timezone)}</le>...")
+                                    chest_time = get_time_diff_from_now(
+                                        task["actionTo"])
+                                    if chest_time <= sleep_time and settings.CHEST_SLEEP and chest_time > 0:
+                                        sleep_times.append(
+                                            chest_time + 120)
 
                                 taskStatus = None
-                                if task.get("checkType") != "fakeCheck":
+                                if task.get("checkType") != "fakeCheck" and not task["key"].startswith(("rebus_", "riddle_")):
                                     logger.info(
                                         f"Checking task <y>{task['key']}</y>...")
                                     taskStatus = await self.check_quest(http_client, quest=task["key"])
 
-                                if (task.get("checkType") == "checkCode"
-                                    and task["key"].startswith(("rebus_", "riddle_"))
-                                        and datetime.datetime.now(datetime.timezone.utc) > date_utc(task["dateStart"])):
-                                    logger.info(
-                                        f"Checking task <y>{task['key']}</y>...")
-                                    taskStatus = await self.check_quest(http_client, quest=task["key"], quest_solution=task["checkData"])
+                                if task["key"].startswith("chest_"):
+                                    chest_time = chest_time = get_time_diff_from_now(
+                                        task["actionTo"])
+                                    if settings.CHEST_SLEEP and chest_time <= 0:
+                                        logger.info(
+                                            f"Checking chest <y>{task['key']}</y>...")
+                                        taskStatus = await self.check_quest(http_client, quest=task["key"], quest_solution=task["checkData"])
+
+                                if (task.get("checkType") == "checkCode") and task["key"].startswith(("rebus_", "riddle_")):
+                                    if compare_with_now(task["dateStart"]) == "past":
+                                        logger.info(
+                                            f"Checking task <y>{task['key']}</y>...")
+                                        taskStatus = await self.check_quest(http_client, quest=task["key"], quest_solution=task["checkData"])
+                                    else:
+                                        sleep_times.append(
+                                            get_time_diff_from_now(task["dateStart"]))
 
                                 if taskStatus != None:
                                     data_done = await self.claim_quest(http_client, quest=task["key"])
@@ -804,7 +816,8 @@ class Tapper:
                                     f"{self.session_name} | Unknown error while resulting quiz!")
                                 logger.info(
                                     f"{self.session_name} | Sleep <y>{round(sleep_time / 60, 1)}</y> min")
-                                await asyncio.sleep(delay=sleep_time)
+                                # await asyncio.sleep(delay=sleep_time)
+                                sleep_times.append(sleep_time)
                                 continue
 
                             done_quiz = await self.claim_quiz(http_client, quiz=quiz_key)
@@ -820,14 +833,20 @@ class Tapper:
                     # Auto Feed
                     if settings.AUTO_FEED:
                         feed_requires = require_feed(user_data=user_data)
-                        logger.info(f"Checking feed <y>{feed_requires}</y>...")
-                        if feed_requires:
+                        logger.info(
+                            f"Checking feed...")
+                        if feed_requires.can_purchase:
                             logger.info(
-                                f"{self.session_name} | Feeding Animals...")
+                                f"{self.session_name} | Feeding animals...")
                             feed_animals = await self.buy_feed(http_client)
                             if feed_animals:
                                 logger.success(
                                     f"{self.session_name} | Auto feed purchased!")
+                        else:
+                            logger.info(
+                                f"Next feed time is <y>{date_utc(feed_requires.next_feed_time).astimezone(local_timezone)}</y>...")
+                            sleep_times.append(get_time_diff_from_now(
+                                feed_requires.next_feed_time))
 
                     # Auto Upgrade
                     if settings.AUTO_UPGRADE:
@@ -870,18 +889,19 @@ class Tapper:
 
                             if not purchase_animal:
                                 logger.error(
-                                    f"{self.session_name} | Something Went Wrong, animal can not be purchased!")
+                                    f"{self.session_name} | Something went wrong, animal can not be purchased!")
 
                             await asyncio.sleep(random.randint(5, 8))
 
                         logger.info(
-                            f"{self.session_name} | Upgrade Completed!")
+                            f"{self.session_name} | Upgrade completed!")
                         logger.success(
                             f"{self.session_name} | Updated Feed: <g>{self.user_coins}</g> | Updated Coins: <g>{tokens}</g> | Updated Coins/Hour: <g>{tkperhr}</g>")
 
+                    min_sleep_time = min(sleep_times)
                     logger.info(
-                        f"{self.session_name} | Sleep <y>{round(sleep_time / 60, 1)}</y> min")
-                    await asyncio.sleep(delay=sleep_time)
+                        f"{self.session_name} | Sleep <y>{round(min_sleep_time / 60, 1)}</y> min")
+                    await asyncio.sleep(delay=min_sleep_time)
 
                 except Exception as error:
                     print(traceback.format_exc())
