@@ -161,9 +161,9 @@ def get_time_diff_from_now(date):
 
 
 def compare_with_now(date):
-    if date_utc(date) < datetime.now(datetime.timezone.utc):
+    if date_utc(date) < datetime.now(timezone.utc):
         return "past"
-    elif date_utc(date) == datetime.now(datetime.timezone.utc):
+    elif date_utc(date) == datetime.now(timezone.utc):
         return 0
     else:
         return "future"
