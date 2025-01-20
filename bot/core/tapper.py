@@ -708,10 +708,7 @@ class Tapper:
                         tasks = [
                             task
                             for task in quests
-                            if (
-                                task["checkType"] == "telegramChannel"
-                                or (task["checkType"] == "invite" and task["checkCount"] <= int(friends))
-                                or task["checkType"] == "fakeCheck"
+                            if (task["checkType"] == "fakeCheck"
                                 or (
                                     task["checkType"] == "checkCode"
                                     and task["key"].startswith(("rebus_", "riddle_")))
@@ -719,7 +716,7 @@ class Tapper:
                                     task["key"].startswith("chest_")
                                     and compare_with_now(task["dateEnd"]) == "future"
                                     and compare_with_now(task["actionTo"]) == "past"
-                                )
+                            )
                             )
                         ]
 
@@ -734,6 +731,12 @@ class Tapper:
                                 f"{self.session_name} | Processing Tasks...")
 
                             for task in pending:
+                                ignored_checkTypes = [
+                                    "donate_ton", "invite", "username", "ton_wallet_transaction", "ton_wallet_connect"]
+                                ignored_tasks = ["boost", "join"]
+                                if task["checkType"] in ignored_checkTypes or any(task["key"].startswith(prefix) for prefix in ignored_tasks):
+                                    continue
+
                                 if "t.me" in task.get("actionUrl", "") and "telegramChannel" in task.get("checkType", ""):
                                     if settings.AUTO_JOIN_CHANNELS:
                                         join_data = await self.join_and_mute_tg_channel(link=task["actionUrl"])
