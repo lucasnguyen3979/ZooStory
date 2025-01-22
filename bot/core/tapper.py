@@ -759,13 +759,16 @@ class Tapper:
                                         f"Checking task <y>{task['key']}</y>...")
                                     taskStatus = await self.check_quest(http_client, quest=task["key"])
 
-                                if task["key"].startswith("chest_"):
+                                if task["key"].startswith("chest_") and taskStatus == None:
                                     chest_time = chest_time = get_time_diff_from_now(
                                         task["actionTo"])
                                     if settings.CHEST_SLEEP and chest_time <= 0:
                                         logger.info(
                                             f"Checking chest <y>{task['key']}</y>...")
                                         taskStatus = await self.check_quest(http_client, quest=task["key"], quest_solution=task["checkData"])
+                                    else:
+                                        sleep_times.append(
+                                            get_time_diff_from_now(task["actionTo"]))
 
                                 if (task.get("checkType") == "checkCode") and task["key"].startswith(("rebus_", "riddle_")):
                                     if compare_with_now(task["dateStart"]) == "past":
